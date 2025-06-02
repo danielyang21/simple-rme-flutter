@@ -211,98 +211,64 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         });
       }
     }
-  }
-
-  Future<void> _loadCrmDetail(String crmName) async {
+  }  Future<void> _loadCrmDetail(String crmName) async {
     setState(() {
       _isLoading = true;
       _hasError = false;
       _errorMessage = null;
-      _selectedCrm = crmName;
       _selectedDetail = null;
     });
 
-    try {
-      final crmItem = _crmItems.firstWhere((item) => item.name == crmName);
-      final id = crmItem.id.replaceAll('urn:uuid:', '');
-      final detailUrl =
-          'https://nrc-digital-repository.canada.ca/eng/view/object/?id=$id';
+    try {      // Find the matching CRM item to get its ID
+      final crmItem = _crmItems.firstWhere(
+        (item) => item.name == crmName,
+        orElse: () => throw Exception('CRM not found'),
+      );
 
+      // Construct the URL using the ID from the CRM item
+      final formattedId = crmItem.id.replaceAll('urn:uuid:', '');
+      final url = 'https://nrc-digital-repository.canada.ca/eng/view/object/?id=$formattedId';
+
+      // Make the HTTP request to get the HTML content
       final response = await http
-          .get(Uri.parse(detailUrl))
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final document = parser.parse(response.body);
-        final tables = document.getElementsByTagName('table');
-
-        String? doi;
-        String? abstract;
-        String? date;
-        List<Map<String, String>>? analyteData;
-
-        // Parse metadata table (first table)
-        if (tables.isNotEmpty) {
-          final firstTable = tables.first;
-          final rows = firstTable.getElementsByTagName('tr');
-
-          for (var row in rows) {
-            final cells = row.getElementsByTagName('td');
-            if (cells.length >= 2) {
-              final key = cells[0].text.trim();
-              final value = cells[1].text.trim();
-
-              if (key == 'DOI') doi = value;
-              if (key == 'Abstract') abstract = value;
-              if (key == 'Publication date') date = value;
-            }
-          }
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 30));      if (response.statusCode == 200) {
+        
+        // Store the HTML string
+        final htmlString = response.body;
+        
+        // Parse the HTML to extract the title and summary
+        final document = parser.parse(htmlString);
+        
+        // Extract title from the specific h1 tag with id="wb-cont" and span with class="citation_title"
+        String title = crmName; // Default to CRM name in case we can't find the title
+        final titleElement = document.querySelector('h1#wb-cont span.citation_title');
+        if (titleElement != null) {
+          title = titleElement.text.trim();
+          print('Found title: $title');
         }
-
-        // Find the analyte table (look for table with "Analyte" in headers)
-        for (var table in tables) {
-          final headers = table.getElementsByTagName('th');
-          final hasAnalyteHeader = headers.any(
-            (th) => th.text.contains('Analyte'),
-          );
-
-          if (hasAnalyteHeader) {
-            final rows = table.getElementsByTagName('tr');
-            final headerRow = rows.first;
-            final headers = headerRow
-                .getElementsByTagName('th')
-                .map((h) => h.text.trim())
-                .toList();
-
-            analyteData = [];
-
-            for (var row in rows.skip(1)) {
-              // Skip header row
-              final cells = row.getElementsByTagName('td');
-              if (cells.isNotEmpty) {
-                final rowData = <String, String>{};
-                for (var i = 0; i < cells.length && i < headers.length; i++) {
-                  rowData[headers[i]] = cells[i].text.trim();
-                }
-                analyteData.add(rowData);
-              }
-            }
-            break; // Stop after finding the first analyte table
-          }
-        }
-
+                
+        // Create CrmDetail object with the extracted information
+        final crmDetail = CrmDetail(
+          title: title,
+          summary: '',
+          doi: null,
+          date: null,
+          analyteData: null,
+        );
+        
         setState(() {
-          _selectedDetail = CrmDetail(
-            title: crmItem.title,
-            summary: abstract ?? crmItem.summary,
-            doi: doi,
-            date: date,
-            analyteData: analyteData,
-          );
+          _selectedCrm = crmName;
+          _selectedDetail = crmDetail;
+          _isLoading = false;
         });
+      } else {
+        _handleError(
+          'Server responded with status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
-      _handleError('Failed to load CRM details: ${e.toString()}');
+      _handleError('Error fetching CRM details: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
@@ -378,6 +344,7 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
       ],
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
