@@ -44,7 +44,7 @@ class CrmDetail {
   final String summary;
   final String? doi;
   final String? date;
-  final List<Map<String, String>>? analyteData;
+  final List<Analyte>? analyteData;
 
   CrmDetail({
     required this.title,
@@ -52,6 +52,24 @@ class CrmDetail {
     this.doi,
     this.date,
     this.analyteData,
+  });
+}
+
+class Analyte {
+  final String name;
+  final String quantity;
+  final String value;
+  final String uncertainty;
+  final String unit;
+  final String type;
+
+  Analyte({
+    required this.name,
+    required this.quantity,
+    required this.value,
+    required this.uncertainty,
+    required this.unit,
+    required this.type,
   });
 }
 
@@ -211,7 +229,9 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         });
       }
     }
-  }  Future<void> _loadCrmDetail(String crmName) async {
+  }
+
+  Future<void> _loadCrmDetail(String crmName) async {
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -219,7 +239,8 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
       _selectedDetail = null;
     });
 
-    try {      // Find the matching CRM item to get its ID
+    try {
+      // Find the matching CRM item to get its ID
       final crmItem = _crmItems.firstWhere(
         (item) => item.name == crmName,
         orElse: () => throw Exception('CRM not found'),
@@ -227,36 +248,72 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
 
       // Construct the URL using the ID from the CRM item
       final formattedId = crmItem.id.replaceAll('urn:uuid:', '');
-      final url = 'https://nrc-digital-repository.canada.ca/eng/view/object/?id=$formattedId';
+      final url =
+          'https://nrc-digital-repository.canada.ca/eng/view/object/?id=$formattedId';
 
       // Make the HTTP request to get the HTML content
       final response = await http
           .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 30));      if (response.statusCode == 200) {
-        
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
         // Store the HTML string
         final htmlString = response.body;
-        
+
         // Parse the HTML to extract the title and summary
         final document = parser.parse(htmlString);
-        
-        // Extract title from the specific h1 tag with id="wb-cont" and span with class="citation_title"
-        String title = crmName; // Default to CRM name in case we can't find the title
-        final titleElement = document.querySelector('h1#wb-cont span.citation_title');
+
+        // Extract title from the specific h1 tag
+        String title =
+            crmName; // Default to CRM name in case we can't find the title
+        final titleElement = document.querySelector(
+          'h1#wb-cont span.citation_title',
+        );
         if (titleElement != null) {
           title = titleElement.text.trim();
-          print('Found title: $title');
         }
-                
+
+        // Extract analyte data from the table
+        final analyteTable = document.querySelectorAll(
+          '.table-viewobject .table.table-condensed',
+        )[1];
+        final rows = analyteTable.querySelectorAll('tbody tr');
+
+        List<Analyte> analytes = [];
+
+        for (final row in rows) {
+          final cells = row.querySelectorAll('td');
+          if (cells.length >= 6) {
+            analytes.add(
+              Analyte(
+                name: cells[0].text.trim(),
+                quantity: cells[1].text.trim(),
+                value: cells[2].text.trim(),
+                uncertainty: cells[3].text.trim(),
+                unit: cells[4].text.trim(),
+                type: cells[5].text.trim(),
+              ),
+            );
+          }
+        }
+
+        final doiLink = document
+            .querySelector('a[itemprop="sameAs"]')
+            ?.attributes['href'];
+
+        final datePublished = document
+            .querySelector('span[itemprop="datePublished"]')
+            ?.text
+            .trim();
+
         // Create CrmDetail object with the extracted information
         final crmDetail = CrmDetail(
           title: title,
           summary: '',
-          doi: null,
-          date: null,
-          analyteData: null,
+          doi: doiLink,
+          date: datePublished,
+          analyteData: analytes,
         );
-        
+
         setState(() {
           _selectedCrm = crmName;
           _selectedDetail = crmDetail;
@@ -293,12 +350,6 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
       return const SizedBox.shrink();
     }
 
-    // Get all column headers
-    final allHeaders = _selectedDetail!.analyteData!
-        .expand((row) => row.keys)
-        .toSet()
-        .toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -310,41 +361,32 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: DataTable(
-              columnSpacing: 20,
-              horizontalMargin: 12,
-              headingRowColor: WidgetStateProperty.resolveWith<Color>(
-                (Set<WidgetState> states) =>
-                    Theme.of(context).primaryColor.withValues(),
-              ),
-              columns: allHeaders.map((header) {
-                return DataColumn(
-                  label: Text(
-                    header,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  tooltip: header,
-                );
-              }).toList(),
-              rows: _selectedDetail!.analyteData!.map((row) {
-                return DataRow(
-                  cells: allHeaders.map((header) {
-                    return DataCell(Text(row[header] ?? ''));
-                  }).toList(),
-                );
-              }).toList(),
-            ),
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Analyte')),
+              DataColumn(label: Text('Quantity')),
+              DataColumn(label: Text('Value')),
+              DataColumn(label: Text('Uncertainty')),
+              DataColumn(label: Text('Unit')),
+              DataColumn(label: Text('Type')),
+            ],
+            rows: _selectedDetail!.analyteData!.map((analyte) {
+              return DataRow(
+                cells: [
+                  DataCell(Text(analyte.name)),
+                  DataCell(Text(analyte.quantity)),
+                  DataCell(Text(analyte.value)),
+                  DataCell(Text(analyte.uncertainty)),
+                  DataCell(Text(analyte.unit)),
+                  DataCell(Text(analyte.type)),
+                ],
+              );
+            }).toList(),
           ),
         ),
       ],
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +399,6 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('v2. 2024', style: TextStyle(fontSize: 12)),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _searchController,
@@ -415,23 +456,27 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                     Html(data: _selectedDetail!.summary),
                     const SizedBox(height: 8),
                     if (_selectedDetail!.doi != null) ...[
-                      const Text('DOI:'),
-                      GestureDetector(
-                        onTap: () async {
-                          final url = _selectedDetail!.doi!.startsWith('http')
-                              ? _selectedDetail!.doi!
-                              : 'https://doi.org/${_selectedDetail!.doi!.replaceAll('Resolve DOI:', '').trim()}';
-                          if (await canLaunchUrl(Uri.parse(url))) {
-                            await launchUrl(Uri.parse(url));
-                          }
-                        },
-                        child: Text(
-                          _selectedDetail!.doi!,
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('DOI: '),
+                          InkWell(
+                            onTap: () async {
+                              String url = _selectedDetail!.doi!;
+                              await launchUrl(
+                                Uri.parse(url),
+                                mode: LaunchMode.externalApplication,
+                              );
+                            },
+                            child: Text(
+                              _selectedDetail!.doi!,
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                     ],
