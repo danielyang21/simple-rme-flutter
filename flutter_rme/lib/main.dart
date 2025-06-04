@@ -208,7 +208,7 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
 
           if (_crmNames.isEmpty) {
             _handleError('No results found', isWarning: true);
-            _crmNames = ['No results'];
+            _crmNames = [];
           }
         } catch (e) {
           _handleError('Failed to parse response data');
@@ -273,28 +273,36 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         }
 
         // Extract analyte data from the table
-        final analyteTable = document.querySelectorAll(
-          '.table-viewobject .table.table-condensed',
-        )[1];
-        final rows = analyteTable.querySelectorAll('tbody tr');
-
         List<Analyte> analytes = [];
+        try {
+          final analyteTable = document.querySelectorAll(
+            '.table-viewobject .table.table-condensed',
+          )[1];
+          final rows = analyteTable.querySelectorAll('tbody tr');
 
-        for (final row in rows) {
-          final cells = row.querySelectorAll('td');
-          if (cells.length >= 6) {
-            analytes.add(
-              Analyte(
-                name: cells[0].text.trim(),
-                quantity: cells[1].text.trim(),
-                value: cells[2].text.trim(),
-                uncertainty: cells[3].text.trim(),
-                unit: cells[4].text.trim(),
-                type: cells[5].text.trim(),
-              ),
-            );
+          for (final row in rows) {
+            final cells = row.querySelectorAll('td');
+            if (cells.length >= 6) {
+              analytes.add(
+                Analyte(
+                  name: cells[0].text.trim(),
+                  quantity: cells[1].text.trim(),
+                  value: cells[2].text.trim(),
+                  uncertainty: cells[3].text.trim(),
+                  unit: cells[4].text.trim(),
+                  type: cells[5].text.trim(),
+                ),
+              );
+            }
           }
+        } on RangeError catch (_) {
+          // Silently ignore RangeError if no analyte data is found
+          analytes = [];
         }
+
+        final summaryText = document.querySelector(
+          'div.metadata-abstract span[itemprop="description"]',
+        )?.text.trim();
 
         final doiLink = document
             .querySelector('a[itemprop="sameAs"]')
@@ -308,7 +316,7 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         // Create CrmDetail object with the extracted information
         final crmDetail = CrmDetail(
           title: title,
-          summary: '',
+          summary: summaryText ?? 'No summary available',
           doi: doiLink,
           date: datePublished,
           analyteData: analytes,
