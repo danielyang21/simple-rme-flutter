@@ -14,15 +14,31 @@ class _AnalyteTableState extends State<AnalyteTable> {
   int? _sortColumnIndex;
   bool _sortAscending = true;
   late List<Analyte> _sortedAnalytes;
+  String _searchText = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _sortedAnalytes = List.from(widget.analytes ?? []);
+    _searchController.addListener(() {
+      setState(() {
+        _searchText = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _sort<T>(
-      Comparable<T> Function(Analyte analyte) getField, int columnIndex, bool ascending) {
+    Comparable<T> Function(Analyte analyte) getField,
+    int columnIndex,
+    bool ascending,
+  ) {
     setState(() {
       _sortedAnalytes.sort((a, b) {
         final aValue = getField(a);
@@ -35,6 +51,18 @@ class _AnalyteTableState extends State<AnalyteTable> {
       _sortColumnIndex = columnIndex;
       _sortAscending = ascending;
     });
+  }
+
+  List<Analyte> get _filteredAnalytes {
+    if (_searchText.isEmpty) return _sortedAnalytes;
+    return _sortedAnalytes.where((a) {
+      return a.name.toLowerCase().contains(_searchText) ||
+          a.quantity.toLowerCase().contains(_searchText) ||
+          a.value.toLowerCase().contains(_searchText) ||
+          a.uncertainty.toLowerCase().contains(_searchText) ||
+          a.unit.toLowerCase().contains(_searchText) ||
+          a.type.toLowerCase().contains(_searchText);
+    }).toList();
   }
 
   @override
@@ -50,6 +78,15 @@ class _AnalyteTableState extends State<AnalyteTable> {
         const Text(
           'Analyte Composition:',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _searchController,
+          decoration: const InputDecoration(
+            labelText: 'Filter analytes',
+            prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -83,7 +120,7 @@ class _AnalyteTableState extends State<AnalyteTable> {
                 onSort: (i, asc) => _sort((a) => a.type, i, asc),
               ),
             ],
-            rows: _sortedAnalytes.map((analyte) {
+            rows: _filteredAnalytes.map((analyte) {
               return DataRow(
                 cells: [
                   DataCell(Text(analyte.name)),
