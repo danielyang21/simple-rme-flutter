@@ -1,14 +1,45 @@
 import 'package:flutter/material.dart';
 import '../models/analyte.dart';
 
-class AnalyteTable extends StatelessWidget {
+class AnalyteTable extends StatefulWidget {
   final List<Analyte>? analytes;
 
   const AnalyteTable({super.key, required this.analytes});
 
   @override
+  State<AnalyteTable> createState() => _AnalyteTableState();
+}
+
+class _AnalyteTableState extends State<AnalyteTable> {
+  int? _sortColumnIndex;
+  bool _sortAscending = true;
+  late List<Analyte> _sortedAnalytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedAnalytes = List.from(widget.analytes ?? []);
+  }
+
+  void _sort<T>(
+      Comparable<T> Function(Analyte analyte) getField, int columnIndex, bool ascending) {
+    setState(() {
+      _sortedAnalytes.sort((a, b) {
+        final aValue = getField(a);
+        final bValue = getField(b);
+        return ascending
+            ? Comparable.compare(aValue, bValue)
+            : Comparable.compare(bValue, aValue);
+      });
+
+      _sortColumnIndex = columnIndex;
+      _sortAscending = ascending;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (analytes == null || analytes!.isEmpty) {
+    if (_sortedAnalytes.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -24,15 +55,35 @@ class AnalyteTable extends StatelessWidget {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            columns: const [
-              DataColumn(label: Text('Analyte')),
-              DataColumn(label: Text('Quantity')),
-              DataColumn(label: Text('Value')),
-              DataColumn(label: Text('Uncertainty')),
-              DataColumn(label: Text('Unit')),
-              DataColumn(label: Text('Type')),
+            sortColumnIndex: _sortColumnIndex,
+            sortAscending: _sortAscending,
+            columns: [
+              DataColumn(
+                label: const Text('Analyte'),
+                onSort: (i, asc) => _sort((a) => a.name, i, asc),
+              ),
+              DataColumn(
+                label: const Text('Quantity'),
+                onSort: (i, asc) => _sort((a) => a.quantity, i, asc),
+              ),
+              DataColumn(
+                label: const Text('Value'),
+                onSort: (i, asc) => _sort((a) => a.value, i, asc),
+              ),
+              DataColumn(
+                label: const Text('Uncertainty'),
+                onSort: (i, asc) => _sort((a) => a.uncertainty, i, asc),
+              ),
+              DataColumn(
+                label: const Text('Unit'),
+                onSort: (i, asc) => _sort((a) => a.unit, i, asc),
+              ),
+              DataColumn(
+                label: const Text('Type'),
+                onSort: (i, asc) => _sort((a) => a.type, i, asc),
+              ),
             ],
-            rows: analytes!.map((analyte) {
+            rows: _sortedAnalytes.map((analyte) {
               return DataRow(
                 cells: [
                   DataCell(Text(analyte.name)),
