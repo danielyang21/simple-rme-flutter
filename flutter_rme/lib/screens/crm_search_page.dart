@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/analyte.dart';
 import '../models/crm_item.dart';
 import '../models/crm_detail.dart';
+import '../screens/properties_page.dart';
 import '../services/crm_service.dart';
 import '../widgets/analyte_table.dart';
 
@@ -26,6 +28,8 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
   bool _initialLoadComplete = false;
   String? _errorMessage;
   bool _hasError = false;
+
+  List<Analyte> _selectedAnalytes = [];
 
   @override
   void initState() {
@@ -125,6 +129,19 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
     }
   }
 
+  void _navigateToPropertiesPage() {
+    if (_selectedAnalytes.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PropertiesPage(
+            analytes: _selectedAnalytes,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,7 +236,21 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                     ],
                     if (_selectedDetail!.date != null)
                       Text('Publication date: ${_selectedDetail!.date}'),
-                    AnalyteTable(analytes: _selectedDetail!.analyteData),
+                    AnalyteTable(
+                      analytes: _selectedDetail!.analyteData,
+                      onSelectionChanged: (selected) {
+                        setState(() {
+                          _selectedAnalytes =
+                              selected; // Update selected analytes
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedAnalytes.isNotEmpty)
+                      ElevatedButton(
+                        onPressed: _navigateToPropertiesPage,
+                        child: const Text('View Selected Properties'),
+                      ),
                   ],
                 ],
               ),
