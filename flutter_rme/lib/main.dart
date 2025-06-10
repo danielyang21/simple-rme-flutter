@@ -48,15 +48,15 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   // List of pages
   final List<Widget> _pages = [
-        const HomePage(),
-        const CrmSearchPage(),
-        const InstructionsPage(),
-    ];
+    const HomePage(),
+    const CrmSearchPage(),
+    const InstructionsPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -67,7 +67,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.house), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.info), label: 'Instructions'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.info),
+            label: 'Instructions',
+          ),
         ],
       ),
     );

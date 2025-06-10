@@ -3,8 +3,13 @@ import '../models/analyte.dart';
 
 class AnalyteTable extends StatefulWidget {
   final List<Analyte>? analytes;
+  final void Function(List<Analyte>)? onSelectionChanged;
 
-  const AnalyteTable({super.key, required this.analytes});
+  const AnalyteTable({
+    super.key, 
+    required this.analytes,
+    this.onSelectionChanged,
+  });
 
   @override
   State<AnalyteTable> createState() => _AnalyteTableState();
@@ -16,20 +21,24 @@ class _AnalyteTableState extends State<AnalyteTable> {
   late List<Analyte> _sortedAnalytes;
   String _searchText = '';
   final TextEditingController _searchController = TextEditingController();
+  final List<Analyte> _selectedAnalytes = [];
 
   @override
   void initState() {
     super.initState();
     _sortedAnalytes = List.from(widget.analytes ?? []);
-    _searchController.addListener(() {
-      setState(() {
-        _searchText = _searchController.text.toLowerCase();
-      });
+    _searchController.addListener(_updateSearchText);
+  }
+
+  void _updateSearchText() {
+    setState(() {
+      _searchText = _searchController.text.toLowerCase();
     });
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_updateSearchText);
     _searchController.dispose();
     super.dispose();
   }
@@ -63,6 +72,21 @@ class _AnalyteTableState extends State<AnalyteTable> {
           a.unit.toLowerCase().contains(_searchText) ||
           a.type.toLowerCase().contains(_searchText);
     }).toList();
+  }
+
+  void _toggleSelection(Analyte analyte) {
+    setState(() {
+      if (_selectedAnalytes.contains(analyte)) {
+        _selectedAnalytes.remove(analyte);
+      } else {
+        _selectedAnalytes.add(analyte);
+      }
+      widget.onSelectionChanged?.call(List.from(_selectedAnalytes));
+    });
+  }
+
+  bool _isSelected(Analyte analyte) {
+    return _selectedAnalytes.contains(analyte);
   }
 
   @override
@@ -121,7 +145,10 @@ class _AnalyteTableState extends State<AnalyteTable> {
               ),
             ],
             rows: _filteredAnalytes.map((analyte) {
+              final isSelected = _isSelected(analyte);
               return DataRow(
+                selected: isSelected,
+                onSelectChanged: (_) => _toggleSelection(analyte),
                 cells: [
                   DataCell(Text(analyte.name)),
                   DataCell(Text(analyte.quantity)),
@@ -134,6 +161,25 @@ class _AnalyteTableState extends State<AnalyteTable> {
             }).toList(),
           ),
         ),
+        if (_selectedAnalytes.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Selected: ${_selectedAnalytes.length} item(s)',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _selectedAnalytes.isNotEmpty
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: _selectedAnalytes.map((analyte) {
+                    return Chip(
+                      label: Text(analyte.name),
+                      onDeleted: () => _toggleSelection(analyte),
+                    );
+                  }).toList(),
+                )
+              : const SizedBox.shrink(),
+        ],
       ],
     );
   }
