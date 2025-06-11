@@ -6,7 +6,7 @@ class AnalyteTable extends StatefulWidget {
   final void Function(List<Analyte>)? onSelectionChanged;
 
   const AnalyteTable({
-    super.key, 
+    super.key,
     required this.analytes,
     this.onSelectionChanged,
   });
@@ -161,25 +161,23 @@ class _AnalyteTableState extends State<AnalyteTable> {
             }).toList(),
           ),
         ),
-        if (_selectedAnalytes.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Selected: ${_selectedAnalytes.length} item(s)',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          _selectedAnalytes.isNotEmpty
-              ? Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: _selectedAnalytes.map((analyte) {
-                    return Chip(
-                      label: Text(analyte.name),
-                      onDeleted: () => _toggleSelection(analyte),
-                    );
-                  }).toList(),
-                )
-              : const SizedBox.shrink(),
-        ],
+        const SizedBox(height: 16),
+        Text(
+          'Selected: ${_selectedAnalytes.length} item(s)',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        _selectedAnalytes.isNotEmpty
+            ? Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: _selectedAnalytes.map((analyte) {
+                  return Chip(
+                    label: Text(analyte.name),
+                    onDeleted: () => _toggleSelection(analyte),
+                  );
+                }).toList(),
+              )
+            : const SizedBox.shrink(),
       ],
     );
   }

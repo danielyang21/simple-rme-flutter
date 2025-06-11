@@ -134,9 +134,8 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PropertiesPage(
-            analytes: _selectedAnalytes,
-          ),
+          builder: (context) =>
+              PropertiesPage(selectedAnalyte: _selectedAnalytes[0].name),
         ),
       );
     }
@@ -246,11 +245,12 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    if (_selectedAnalytes.isNotEmpty)
-                      ElevatedButton(
-                        onPressed: _navigateToPropertiesPage,
-                        child: const Text('View Selected Properties'),
-                      ),
+                    ElevatedButton(
+                      onPressed: _selectedAnalytes.isNotEmpty
+                          ? _navigateToPropertiesPage
+                          : null,
+                      child: const Text('View Selected Properties'),
+                    ),
                   ],
                 ],
               ),
