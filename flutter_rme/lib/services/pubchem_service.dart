@@ -6,6 +6,8 @@ class PubChemService {
   static const String _baseUrl = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 
   Future<PubChemData> getCompoundData(String identifier) async {
+    //deal with multi-word, and extra brackets
+    identifier = identifier.replaceAll(RegExp(r'\s*\([^)]*\)$'), ''); 
     identifier = identifier.replaceAll(' ', '-');
 
     try {
@@ -21,7 +23,7 @@ class PubChemService {
       // Get compound properties
       final propertiesResponse = await http.get(
         Uri.parse('$_baseUrl/compound/cid/$cid/property/'
-            'IUPACName,MolecularFormula,MolecularWeight,InChIKey,SMILES,'
+            'Title,IUPACName,MolecularFormula,MolecularWeight,InChIKey,SMILES,'
             'ExactMass,TPSA,XLogP/JSON'),
       );
 
@@ -54,7 +56,8 @@ class PubChemService {
 
 
       return PubChemData(
-        name: properties['IUPACName'] ?? identifier,
+        name: properties['Title'] ?? identifier,
+        iupacName: properties['IUPACName'] ?? identifier,
         molecularFormula: properties['MolecularFormula'] ?? '',
         molecularWeight: parseNumeric(properties['MolecularWeight']),
         smiles: properties['SMILES'] ?? '',

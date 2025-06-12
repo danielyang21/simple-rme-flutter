@@ -1,5 +1,6 @@
 class PubChemData {
   final String name;
+  final String iupacName;
   final String molecularFormula;
   final double? molecularWeight;
   final String smiles;
@@ -13,6 +14,7 @@ class PubChemData {
 
   PubChemData({
     required this.name,
+    required this.iupacName,
     required this.molecularFormula,
     this.molecularWeight,
     required this.smiles,
@@ -43,6 +45,7 @@ class PubChemData {
 
     return PubChemData(
       name: json['name']?.toString() ?? 'Unknown',
+      iupacName: json['iupacName']?.toString() ?? 'Unknown',
       molecularFormula: json['molecularFormula']?.toString() ?? '',
       molecularWeight: parseDouble(json['molecularWeight']),
       smiles: json['smiles']?.toString() ?? '',

@@ -67,6 +67,12 @@ class _PropertiesPageState extends State<PropertiesPage> {
                 // Properties
                 _buildPropertySection(
                   context,
+                  title: 'IUPAC Name',
+                  value: data.iupacName,
+                ),
+
+                _buildPropertySection(
+                  context,
                   title: 'Synonyms',
                   value: data.synonyms.join(', '),
                   tooltip: 'Top synonyms for this compound from PubChem',
