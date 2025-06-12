@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('lib/assets/rme_icon.png', width: 200, height: 200),
+                Image.asset('assets/rme_icon.png', width: 200, height: 200),
                 const SizedBox(height: 24),
                 const Text(
                   'Reference Material Explorer',

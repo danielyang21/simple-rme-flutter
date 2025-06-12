@@ -185,7 +185,7 @@ class _PropertiesPageState extends State<PropertiesPage> {
               ],
             ],
           ),
-          Text(value),
+          SelectableText(value),
         ],
       ),
     );
