@@ -6,9 +6,26 @@ class PubChemService {
   static const String _baseUrl = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 
   Future<PubChemData> getCompoundData(String identifier) async {
-    //deal with multi-word, and extra brackets
-    identifier = identifier.replaceAll(RegExp(r'\s*\([^)]*\)$'), ''); 
-    identifier = identifier.replaceAll(' ', '-');
+    //parse the identifier to work with pubchem
+    identifier = identifier.replaceAll('Δ', 'delta');
+    identifier = identifier.replaceAllMapped(RegExp(r'[⁰¹²³⁴⁵⁶⁷⁸⁹]'), (match) {
+      const superscripts = {
+        '⁰': '0',
+        '¹': '1',
+        '²': '2',
+        '³': '3',
+        '⁴': '4',
+        '⁵': '5',
+        '⁶': '6',
+        '⁷': '7',
+        '⁸': '8',
+        '⁹': '9',
+      };
+      return superscripts[match.group(0)] ?? '';
+    });
+    identifier = identifier.replaceAll(RegExp(r'\s*\([^)]*\)$'), '');
+    identifier = identifier.replaceAll(' ', '-').toLowerCase();
+
 
     try {
       // First try to get CID
@@ -16,15 +33,16 @@ class PubChemService {
         Uri.parse('$_baseUrl/compound/name/$identifier/cids/JSON'),
       );
 
-      
       final cidJson = jsonDecode(cidResponse.body);
       final cid = cidJson['IdentifierList']['CID'][0];
 
       // Get compound properties
       final propertiesResponse = await http.get(
-        Uri.parse('$_baseUrl/compound/cid/$cid/property/'
-            'Title,IUPACName,MolecularFormula,MolecularWeight,InChIKey,SMILES,'
-            'ExactMass,TPSA,XLogP/JSON'),
+        Uri.parse(
+          '$_baseUrl/compound/cid/$cid/property/'
+          'Title,IUPACName,MolecularFormula,MolecularWeight,InChIKey,SMILES,'
+          'ExactMass,TPSA,XLogP/JSON',
+        ),
       );
 
       final propertiesJson = jsonDecode(propertiesResponse.body);
@@ -53,7 +71,6 @@ class PubChemService {
       } catch (e) {
         print('Error fetching synonyms: $e');
       }
-
 
       return PubChemData(
         name: properties['Title'] ?? identifier,
