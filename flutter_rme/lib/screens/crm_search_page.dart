@@ -6,6 +6,7 @@ import '../models/analyte.dart';
 import '../models/crm_item.dart';
 import '../models/crm_detail.dart';
 import '../screens/properties_page.dart';
+import '../screens/spectrum_page.dart';
 import '../services/crm_service.dart';
 import '../widgets/analyte_table.dart';
 
@@ -141,6 +142,18 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
     }
   }
 
+  void _navigateToSpectrumPage() {
+    if (_selectedAnalytes.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              SpectrumPage(selectedAnalyte: _selectedAnalytes[0].name),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,6 +263,14 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                           ? _navigateToPropertiesPage
                           : null,
                       child: const Text('View Selected Properties'),
+                    ),
+
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: _selectedAnalytes.isNotEmpty
+                          ? _navigateToSpectrumPage
+                          : null,
+                      child: const Text('View Selected Spectrum'),
                     ),
                   ],
                 ],
