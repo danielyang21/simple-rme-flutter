@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rme/screens/home_page.dart';
 import 'package:flutter_rme/screens/instructions_page.dart';
+import 'package:flutter_rme/screens/polarity_mw_plot_page.dart';
 import 'screens/crm_search_page.dart';
 import 'dart:io';
+import 'package:flutter_rme/global_state.dart';
+import 'package:provider/provider.dart';
 
 //http overrides to allow self-signed certificates
 class MyHttpOverrides extends HttpOverrides {
@@ -16,8 +19,14 @@ class MyHttpOverrides extends HttpOverrides {
 
 void main() {
   HttpOverrides.global = MyHttpOverrides();
-  runApp(const NrcCrmApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => GlobalState(),
+      child: const NrcCrmApp(),
+    ),
+  );
 }
+
 
 class NrcCrmApp extends StatelessWidget {
   const NrcCrmApp({super.key});
@@ -50,6 +59,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   final List<Widget> _pages = [
     const HomePage(),
     const CrmSearchPage(),
+    const PolarityMwPlotPage(),
     const InstructionsPage(),
   ];
 
@@ -58,6 +68,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: Colors.grey,
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
@@ -67,6 +79,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.house), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Polarity MW Plot',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.info),
             label: 'Instructions',

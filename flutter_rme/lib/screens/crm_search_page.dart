@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 
 import '../models/analyte.dart';
 import '../models/crm_item.dart';
@@ -9,6 +10,7 @@ import '../screens/properties_page.dart';
 import '../screens/spectrum_page.dart';
 import '../services/crm_service.dart';
 import '../widgets/analyte_table.dart';
+import '../global_state.dart';
 
 class CrmSearchPage extends StatefulWidget {
   const CrmSearchPage({super.key});
@@ -251,12 +253,14 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                     AnalyteTable(
                       analytes: _selectedDetail!.analyteData,
                       onSelectionChanged: (selected) {
-                        setState(() {
-                          _selectedAnalytes =
-                              selected; // Update selected analytes
-                        });
+                        setState(() => _selectedAnalytes = selected);
+                        Provider.of<GlobalState>(
+                          context,
+                          listen: false,
+                        ).addAnalytes(selected);
                       },
                     ),
+
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _selectedAnalytes.isNotEmpty
