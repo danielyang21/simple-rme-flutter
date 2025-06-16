@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/analyte.dart';
 
 class GlobalState with ChangeNotifier {
-  List<Analyte> _selectedAnalytes = [];
+  final List<Analyte> _selectedAnalytes = [];
 
   List<Analyte> get selectedAnalytes => _selectedAnalytes;
 
