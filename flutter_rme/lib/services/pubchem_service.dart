@@ -26,7 +26,6 @@ class PubChemService {
     identifier = identifier.replaceAll(RegExp(r'\s*\([^)]*\)$'), '');
     identifier = identifier.replaceAll(' ', '-').toLowerCase();
 
-
     try {
       // First try to get CID
       final cidResponse = await http.get(
@@ -81,7 +80,9 @@ class PubChemService {
         inchiKey: properties['InChIKey'] ?? '',
         exactMass: parseNumeric(properties['ExactMass']),
         tpsa: parseNumeric(properties['TPSA']),
-        pKow: parseNumeric(properties['XLogP']),
+        pKow: properties['XLogP'] != null
+            ? parseNumeric(-(properties['XLogP'] as num))
+            : null,
         cid: cid,
         synonyms: synonyms.isNotEmpty ? synonyms : [identifier],
         imageUrl: '$_baseUrl/compound/cid/$cid/PNG',

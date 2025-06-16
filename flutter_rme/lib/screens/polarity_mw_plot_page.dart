@@ -77,19 +77,13 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
           children: [
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),                child: ScatterChart(
+                padding: const EdgeInsets.all(16.0),
+                child: ScatterChart(
                   ScatterChartData(
-                    scatterSpots: spots
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                          final spot = entry.value;
-                          return ScatterSpot(
-                            spot.x,
-                            spot.y,
-                          );
-                        })
-                        .toList(),
+                    scatterSpots: spots.asMap().entries.map((entry) {
+                      final spot = entry.value;
+                      return ScatterSpot(spot.x, spot.y);
+                    }).toList(),
                     minX: -10,
                     maxX: 10,
                     minY: 0,
@@ -100,14 +94,17 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                       touchTooltipData: ScatterTouchTooltipData(
                         getTooltipItems: (ScatterSpot touchedSpot) {
                           // Find the index of the touched spot
-                          final index = spots.indexWhere((spot) => 
-                            spot.x == touchedSpot.x && spot.y == touchedSpot.y);
-                          
+                          final index = spots.indexWhere(
+                            (spot) =>
+                                spot.x == touchedSpot.x &&
+                                spot.y == touchedSpot.y,
+                          );
+
                           // Get the name from validData using the index
-                          final name = index >= 0 && index < validData.length 
-                            ? validData[index].name 
-                            : '';
-                            
+                          final name = index >= 0 && index < validData.length
+                              ? validData[index].name
+                              : '';
+
                           return ScatterTooltipItem(
                             name,
                             textStyle: const TextStyle(
@@ -127,11 +124,11 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                           500, // Match with Y-axis titles interval
                       verticalInterval: 2, // Match with X-axis titles interval
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(),
                         strokeWidth: 1,
                       ),
                       getDrawingVerticalLine: (value) => FlLine(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(),
                         strokeWidth: 1,
                       ),
                     ),
@@ -166,9 +163,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                           interval: 2,
                           getTitlesWidget: (value, meta) {
                             return Padding(
-                              padding: const EdgeInsets.only(
-                                top: 12.0,
-                              ),
+                              padding: const EdgeInsets.only(top: 12.0),
                               child: Text(
                                 value.toInt().toString(),
                                 style: const TextStyle(fontSize: 10),
@@ -177,13 +172,8 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                           },
                         ),
                         axisNameWidget: const Padding(
-                          padding: EdgeInsets.only(
-                            top: 0.0,
-                          ),
-                          child: Text(
-                            'Polarity (logP)',
-                            style: TextStyle(fontSize: 12),
-                          ),
+                          padding: EdgeInsets.only(top: 0.0),
+                          child: Text('pKow', style: TextStyle(fontSize: 12)),
                         ),
                       ),
                       rightTitles: AxisTitles(
@@ -222,7 +212,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                       ),
                       DataColumn(
                         label: Text(
-                          'logP',
+                          'pKow',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         numeric: true,
@@ -274,9 +264,19 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
 
   Future<List<PubChemData?>> _fetchAllData(List<Analyte> analytes) async {
     final pubChemService = PubChemService();
-    final futures = analytes.map(
-      (analyte) => pubChemService.getCompoundData(analyte.name),
+
+    final results = await Future.wait(
+      analytes.map((analyte) async {
+        try {
+          return await pubChemService.getCompoundData(analyte.name);
+        } catch (e) {
+          print('Failed to fetch data for ${analyte.name}: $e');
+          return null; // Return null for failed requests
+        }
+      }),
+      eagerError: false, // Continue processing other requests even if one fails
     );
-    return await Future.wait(futures);
+
+    return results.where((item) => item != null).toList();
   }
 }
