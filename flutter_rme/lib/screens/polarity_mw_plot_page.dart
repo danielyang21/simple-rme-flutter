@@ -15,6 +15,10 @@ class PolarityMwPlotPage extends StatefulWidget {
 }
 
 class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
+  // Sorting variables
+  bool _sortAscending = true;
+  int? _sortColumnIndex;
+
   @override
   Widget build(BuildContext context) {
     final globalState = Provider.of<GlobalState>(context);
@@ -49,7 +53,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
         }
 
         final dataList = snapshot.data ?? [];
-        final validData = dataList
+        List<PubChemData> validData = dataList
             .where(
               (data) =>
                   data != null &&
@@ -61,6 +65,26 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
 
         if (validData.isEmpty) {
           return const Center(child: Text('No valid data available'));
+        }
+
+        // Sort data if needed
+        if (_sortColumnIndex != null) {
+          validData.sort((a, b) {
+            final aValue = _sortColumnIndex == 1
+                ? a.molecularWeight
+                : a.pKow;
+            final bValue = _sortColumnIndex == 1
+                ? b.molecularWeight
+                : b.pKow;
+
+            if (aValue == null || bValue == null) {
+              return 0;
+            }
+
+            return _sortAscending
+                ? aValue.compareTo(bValue)
+                : bValue.compareTo(aValue);
+          });
         }
 
         // Create spots with fixed axis ranges
@@ -196,26 +220,46 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 20,
-                    columns: const [
+                    sortColumnIndex: _sortColumnIndex,
+                    sortAscending: _sortAscending,
+                    columns: [
                       DataColumn(
-                        label: Text(
+                        label: const Text(
                           'Compound',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
+                        onSort: (columnIndex, ascending) {
+                            setState(() {
+                                _sortColumnIndex = columnIndex;
+                                _sortAscending = ascending;
+                            });
+                        },
                       ),
                       DataColumn(
-                        label: Text(
+                        label: const Text(
                           'MW (g/mol)',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         numeric: true,
+                        onSort: (columnIndex, ascending) {
+                          setState(() {
+                            _sortColumnIndex = columnIndex;
+                            _sortAscending = ascending;
+                          });
+                        },
                       ),
                       DataColumn(
-                        label: Text(
+                        label: const Text(
                           'pKow',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         numeric: true,
+                        onSort: (columnIndex, ascending) {
+                          setState(() {
+                            _sortColumnIndex = columnIndex;
+                            _sortAscending = ascending;
+                          });
+                        },
                       ),
                     ],
                     rows: validData
