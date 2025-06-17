@@ -253,11 +253,20 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                     AnalyteTable(
                       analytes: _selectedDetail!.analyteData,
                       onSelectionChanged: (selected) {
+                        final previousSelection = _selectedAnalytes;
                         setState(() => _selectedAnalytes = selected);
-                        Provider.of<GlobalState>(
-                          context,
-                          listen: false,
-                        ).addAnalytes(selected);
+
+                        // Calculate newly added items
+                        final newlySelected = selected
+                            .where((item) => !previousSelection.contains(item))
+                            .toList();
+
+                        if (newlySelected.isNotEmpty) {
+                          Provider.of<GlobalState>(
+                            context,
+                            listen: false,
+                          ).addAnalytes(newlySelected);
+                        }
                       },
                     ),
 

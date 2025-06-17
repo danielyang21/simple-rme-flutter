@@ -189,7 +189,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200, // Fixed height for the table
+              height: 200,
               child: SingleChildScrollView(
                 scrollDirection: Axis.vertical,
                 child: SingleChildScrollView(
@@ -224,7 +224,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                             cells: [
                               DataCell(
                                 SizedBox(
-                                  width: 150, // Fixed width for compound names
+                                  width: 150,
                                   child: Text(
                                     data.name,
                                     overflow: TextOverflow.ellipsis,
