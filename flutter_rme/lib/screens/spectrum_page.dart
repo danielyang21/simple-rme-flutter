@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_rme/widgets/spectrum_plot.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:xml/xml.dart' as xml;
 
 class SpectrumPage extends StatefulWidget {
   final String selectedAnalyte;
@@ -11,75 +14,96 @@ class SpectrumPage extends StatefulWidget {
 }
 
 class _SpectrumPageState extends State<SpectrumPage> {
-  List<List<String>> spectrumData = [];
-  bool isLoading = true;
-  String? error;
+  String? _errorMessage;
+  String? _csvData;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchSpectrumData();
+    _fetchSpectrumData();
   }
 
-  Future<void> fetchSpectrumData() async {
+  Future<void> _fetchSpectrumData() async {
     try {
-      final uri = Uri.parse('https://nrc-digital-repository.canada.ca/eng/view/dataset/?id=a378a45e-91d2-46f0-be8e-15bef03f3216');
+      // Build the URI for the Atom feed based on the selected analyte
+      final uri = Uri.parse(
+        'https://nrc-digital-repository.canada.ca/eng/search/atom/?q=${widget.selectedAnalyte.replaceAll(' ', '+')}',
+      );
+
+      print('Fetching Atom feed from: $uri');
 
       final response = await http.get(uri);
-      if (response.statusCode == 200) {
-        final lines = const LineSplitter().convert(response.body);
-        final data = <List<String>>[];
-
-        // Skip metadata until reaching the actual data header
-        bool foundHeader = false;
-        for (final line in lines) {
-          if (!foundHeader) {
-            if (line.trim().toLowerCase().startsWith('mass_to_charge')) {
-              foundHeader = true;
-            }
-            continue;
-          }
-          if (line.trim().isEmpty) continue;
-
-          final parts = line.split(',');
-          if (parts.length == 2) {
-            data.add(parts);
-          }
-        }
-
-        setState(() {
-          spectrumData = data;
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to fetch spectrum data');
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load Atom feed');
       }
+
+      // Parse the Atom feed
+      final document = xml.XmlDocument.parse(response.body);
+      final datasetUrl = _findDatasetUrl(document);
+
+      if (datasetUrl == null) {
+        throw Exception('No spectral data found for ${widget.selectedAnalyte}');
+      }
+
+        print('Dataset URL: $datasetUrl');
+
+      // Download the CSV data
+      final csvResponse = await http.get(Uri.parse(datasetUrl));
+      if (csvResponse.statusCode != 200) {
+        throw Exception('Failed to download CSV data');
+      }
+
+      setState(() {
+        _csvData = csvResponse.body;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        error = e.toString();
-        isLoading = false;
+        _errorMessage = 'Error loading data: ${e.toString()}';
+        _isLoading = false;
       });
+    }
+  }
+
+  // Helper function to find the dataset URL in the Atom feed
+  String? _findDatasetUrl(xml.XmlDocument document) {
+    try {
+      return document
+          .findAllElements('link')
+          .where(
+            (link) => link.getAttribute('title') == 'Download dataset part 1',
+          )
+          .first
+          .getAttribute('href');
+    } catch (e) {
+      return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Spectrum for ${widget.selectedAnalyte}')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: Text('Error: $error'))
-              : ListView.builder(
-                  itemCount: spectrumData.length,
-                  itemBuilder: (context, index) {
-                    final row = spectrumData[index];
-                    return ListTile(
-                      title: Text('m/z: ${row[0]}'),
-                      subtitle: Text('Intensity: ${row[1]}'),
-                    );
-                  },
-                ),
-    );
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.selectedAnalyte)),
+        body: Center(child: Text(_errorMessage!)),
+      );
+    }
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.selectedAnalyte)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_csvData == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.selectedAnalyte)),
+        body: const Center(child: Text('No spectral data available')),
+      );
+    }
+
+    return SpectrumPlot(csvData: _csvData!);
   }
 }

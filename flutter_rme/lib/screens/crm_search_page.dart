@@ -150,7 +150,7 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         context,
         MaterialPageRoute(
           builder: (context) =>
-              SpectrumPage(selectedAnalyte: _selectedAnalytes[0].name),
+              SpectrumPage(selectedAnalyte: _selectedAnalytes[0].name,),
         ),
       );
     }
