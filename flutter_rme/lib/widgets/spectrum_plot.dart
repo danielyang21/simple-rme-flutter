@@ -45,16 +45,21 @@ class _SpectrumPlotState extends State<SpectrumPlot> {
     }
 
     // Find data start
-    final dataStartIndex =
-        csvRows.indexWhere(
-          (row) =>
-              row.length >= 2 &&
-              row[0].toString().contains(
-                widget.isMassSpectrum ? 'Mass_to_charge' : 'Intensity',
-              ),
-        ) +
-        1;
+    int dataStartIndex = csvRows.indexWhere((row) {
+      if (row.length < 2) return false;
 
+      final x = double.tryParse(row[0].toString().trim());
+      final y = double.tryParse(row[1].toString().trim());
+
+      return x != null && y != null;
+    });
+
+    if (dataStartIndex == -1) {
+      print('Could not find numeric data start row.');
+      return;
+    }
+
+    print('Data starts at index: $dataStartIndex');
     if (dataStartIndex > 0 && dataStartIndex < csvRows.length) {
       final spectralData = csvRows
           .sublist(dataStartIndex)

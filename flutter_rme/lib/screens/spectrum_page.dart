@@ -41,12 +41,11 @@ class _SpectrumPageState extends State<SpectrumPage> {
       // Parse the Atom feed
       final document = xml.XmlDocument.parse(response.body);
       final datasetUrl = _findDatasetUrl(document);
-
       if (datasetUrl == null) {
         throw Exception('No spectral data found for ${widget.selectedAnalyte}');
       }
 
-        print('Dataset URL: $datasetUrl');
+      print('Dataset URL: $datasetUrl');
 
       // Download the CSV data
       final csvResponse = await http.get(Uri.parse(datasetUrl));
@@ -71,10 +70,15 @@ class _SpectrumPageState extends State<SpectrumPage> {
     try {
       return document
           .findAllElements('link')
-          .where(
-            (link) => link.getAttribute('title') == 'Download dataset part 1',
+          .firstWhere(
+            (link) =>
+                link.getAttribute('type') == 'text/csv' &&
+                link
+                        .getAttribute('title')
+                        ?.toLowerCase()
+                        .contains('spectrum') ==
+                    true,
           )
-          .first
           .getAttribute('href');
     } catch (e) {
       return null;
