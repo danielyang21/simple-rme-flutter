@@ -41,283 +41,231 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
   }
 
   Widget _buildChartWithData(GlobalState state) {
-    return FutureBuilder(
-      future: _fetchAllData(state),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final dataList = state.pubChemData;
+    List<PubChemData> validData = dataList
+        .where((data) => data.molecularWeight != null && data.pKow != null)
+        .toList();
 
-        if (snapshot.hasError) {
-          return Center(child: Text('Error loading data: ${snapshot.error}'));
-        }
+    if (validData.isEmpty) {
+      return const Center(child: Text('No valid data available'));
+    }
 
-        final dataList = snapshot.data ?? [];
-        List<PubChemData> validData = dataList
-            .where((data) => data.molecularWeight != null && data.pKow != null)
-            .cast<PubChemData>()
-            .toList();
+    // Sorting
+    if (_sortColumnIndex != null) {
+      validData.sort((a, b) {
+        final aValue = _sortColumnIndex == 1 ? a.molecularWeight : a.pKow;
+        final bValue = _sortColumnIndex == 1 ? b.molecularWeight : b.pKow;
 
-        if (validData.isEmpty) {
-          return const Center(child: Text('No valid data available'));
-        }
+        if (aValue == null || bValue == null) return 0;
 
-        // Sort data if needed
-        if (_sortColumnIndex != null) {
-          validData.sort((a, b) {
-            final aValue = _sortColumnIndex == 1 ? a.molecularWeight : a.pKow;
-            final bValue = _sortColumnIndex == 1 ? b.molecularWeight : b.pKow;
+        return _sortAscending
+            ? aValue.compareTo(bValue)
+            : bValue.compareTo(aValue);
+      });
+    }
 
-            if (aValue == null || bValue == null) {
-              return 0;
-            }
+    final spots = validData
+        .map(
+          (data) => FlSpot(
+            data.pKow!.clamp(-10.0, 10.0),
+            data.molecularWeight!.clamp(0.0, 2500.0),
+          ),
+        )
+        .toList();
 
-            return _sortAscending
-                ? aValue.compareTo(bValue)
-                : bValue.compareTo(aValue);
-          });
-        }
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ScatterChart(
+              ScatterChartData(
+                scatterSpots: spots.asMap().entries.map((entry) {
+                  final spot = entry.value;
+                  return ScatterSpot(spot.x, spot.y);
+                }).toList(),
+                minX: -10,
+                maxX: 10,
+                minY: 0,
+                maxY: 2500,
+                borderData: FlBorderData(show: true),
+                scatterTouchData: ScatterTouchData(
+                  enabled: true,
+                  touchTooltipData: ScatterTouchTooltipData(
+                    getTooltipItems: (ScatterSpot touchedSpot) {
+                      // Find the index of the touched spot
+                      final index = spots.indexWhere(
+                        (spot) =>
+                            spot.x == touchedSpot.x && spot.y == touchedSpot.y,
+                      );
 
-        // Create spots with fixed axis ranges
-        final spots = validData
-            .map(
-              (data) => FlSpot(
-                data.pKow!.clamp(-10.0, 10.0),
-                data.molecularWeight!.clamp(0.0, 2500.0),
-              ),
-            )
-            .toList();
+                      // Get the name from validData using the index
+                      final name = index >= 0 && index < validData.length
+                          ? validData[index].name
+                          : '';
 
-        return Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ScatterChart(
-                  ScatterChartData(
-                    scatterSpots: spots.asMap().entries.map((entry) {
-                      final spot = entry.value;
-                      return ScatterSpot(spot.x, spot.y);
-                    }).toList(),
-                    minX: -10,
-                    maxX: 10,
-                    minY: 0,
-                    maxY: 2500,
-                    borderData: FlBorderData(show: true),
-                    scatterTouchData: ScatterTouchData(
-                      enabled: true,
-                      touchTooltipData: ScatterTouchTooltipData(
-                        getTooltipItems: (ScatterSpot touchedSpot) {
-                          // Find the index of the touched spot
-                          final index = spots.indexWhere(
-                            (spot) =>
-                                spot.x == touchedSpot.x &&
-                                spot.y == touchedSpot.y,
-                          );
-
-                          // Get the name from validData using the index
-                          final name = index >= 0 && index < validData.length
-                              ? validData[index].name
-                              : '';
-
-                          return ScatterTooltipItem(
-                            name,
-                            textStyle: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                            bottomMargin: 6,
-                          );
-                        },
-                      ),
-                    ),
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: true,
-                      drawHorizontalLine: true,
-                      horizontalInterval:
-                          500, // Match with Y-axis titles interval
-                      verticalInterval: 2, // Match with X-axis titles interval
-                      getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey.withValues(),
-                        strokeWidth: 1,
-                      ),
-                      getDrawingVerticalLine: (value) => FlLine(
-                        color: Colors.grey.withValues(),
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 35,
-                          interval: 500,
-                          getTitlesWidget: (value, meta) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 4.0),
-                              child: Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          },
+                      return ScatterTooltipItem(
+                        name,
+                        textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
                         ),
-                        axisNameWidget: const Padding(
-                          padding: EdgeInsets.only(right: 8.0),
+                        bottomMargin: 6,
+                      );
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  drawHorizontalLine: true,
+                  horizontalInterval: 500, // Match with Y-axis titles interval
+                  verticalInterval: 2, // Match with X-axis titles interval
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.withValues(), strokeWidth: 1),
+                  getDrawingVerticalLine: (value) =>
+                      FlLine(color: Colors.grey.withValues(), strokeWidth: 1),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 35,
+                      interval: 500,
+                      getTitlesWidget: (value, meta) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4.0),
                           child: Text(
-                            'Molecular Weight (g/mol)',
-                            style: TextStyle(fontSize: 12),
+                            value.toInt().toString(),
+                            style: const TextStyle(fontSize: 10),
                           ),
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: 2,
-                          getTitlesWidget: (value, meta) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 12.0),
-                              child: Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          },
-                        ),
-                        axisNameWidget: const Padding(
-                          padding: EdgeInsets.only(top: 0.0),
-                          child: Text('pKow', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
+                        );
+                      },
+                    ),
+                    axisNameWidget: const Padding(
+                      padding: EdgeInsets.only(right: 8.0),
+                      child: Text(
+                        'Molecular Weight (g/mol)',
+                        style: TextStyle(fontSize: 12),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: 20,
-                    sortColumnIndex: _sortColumnIndex,
-                    sortAscending: _sortAscending,
-                    columns: [
-                      DataColumn(
-                        label: const Text(
-                          'Compound',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        onSort: (columnIndex, ascending) {
-                          setState(() {
-                            _sortColumnIndex = columnIndex;
-                            _sortAscending = ascending;
-                          });
-                        },
-                      ),
-                      DataColumn(
-                        label: const Text(
-                          'MW (g/mol)',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        numeric: true,
-                        onSort: (columnIndex, ascending) {
-                          setState(() {
-                            _sortColumnIndex = columnIndex;
-                            _sortAscending = ascending;
-                          });
-                        },
-                      ),
-                      DataColumn(
-                        label: const Text(
-                          'pKow',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        numeric: true,
-                        onSort: (columnIndex, ascending) {
-                          setState(() {
-                            _sortColumnIndex = columnIndex;
-                            _sortAscending = ascending;
-                          });
-                        },
-                      ),
-                    ],
-                    rows: validData
-                        .map(
-                          (data) => DataRow(
-                            cells: [
-                              DataCell(
-                                SizedBox(
-                                  width: 150,
-                                  child: Text(
-                                    data.name,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  data.molecularWeight?.toStringAsFixed(2) ??
-                                      'N/A',
-                                  style: const TextStyle(
-                                    fontFamily: 'RobotoMono',
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  data.pKow?.toStringAsFixed(2) ?? 'N/A',
-                                  style: const TextStyle(
-                                    fontFamily: 'RobotoMono',
-                                  ),
-                                ),
-                              ),
-                            ],
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: 2,
+                      getTitlesWidget: (value, meta) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: Text(
+                            value.toInt().toString(),
+                            style: const TextStyle(fontSize: 10),
                           ),
-                        )
-                        .toList(),
+                        );
+                      },
+                    ),
+                    axisNameWidget: const Padding(
+                      padding: EdgeInsets.only(top: 0.0),
+                      child: Text('pKow', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
               ),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 20,
+                sortColumnIndex: _sortColumnIndex,
+                sortAscending: _sortAscending,
+                columns: [
+                  DataColumn(
+                    label: const Text(
+                      'Compound',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onSort: (columnIndex, ascending) {
+                      setState(() {
+                        _sortColumnIndex = columnIndex;
+                        _sortAscending = ascending;
+                      });
+                    },
+                  ),
+                  DataColumn(
+                    label: const Text(
+                      'MW (g/mol)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    numeric: true,
+                    onSort: (columnIndex, ascending) {
+                      setState(() {
+                        _sortColumnIndex = columnIndex;
+                        _sortAscending = ascending;
+                      });
+                    },
+                  ),
+                  DataColumn(
+                    label: const Text(
+                      'pKow',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    numeric: true,
+                    onSort: (columnIndex, ascending) {
+                      setState(() {
+                        _sortColumnIndex = columnIndex;
+                        _sortAscending = ascending;
+                      });
+                    },
+                  ),
+                ],
+                rows: validData
+                    .map(
+                      (data) => DataRow(
+                        cells: [
+                          DataCell(
+                            SizedBox(
+                              width: 150,
+                              child: Text(
+                                data.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              data.molecularWeight?.toStringAsFixed(2) ?? 'N/A',
+                              style: const TextStyle(fontFamily: 'RobotoMono'),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              data.pKow?.toStringAsFixed(2) ?? 'N/A',
+                              style: const TextStyle(fontFamily: 'RobotoMono'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
-  }
-
-  Future<List<PubChemData>> _fetchAllData(GlobalState state) async {
-    final pubChemService = PubChemService();
-
-    final results = <PubChemData>[];
-    final failedAnalytes = <Analyte>[];
-
-    for (var analyte in state.selectedAnalytes) {
-      try {
-        final data = await pubChemService.getCompoundData(analyte.name);
-        results.add(data);
-      } catch (e) {
-        debugPrint('Failed to fetch data for ${analyte.name}: $e');
-        failedAnalytes.add(analyte);
-      }
-    }
-
-    if (failedAnalytes.isNotEmpty) {
-      state.removeAnalytes(failedAnalytes);
-    }
-
-    print(state.selectedAnalytes.length);
-    return results;
   }
 }

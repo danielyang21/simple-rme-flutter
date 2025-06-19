@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_rme/models/analyte.dart';
 import 'package:http/http.dart' as http;
 import '../models/pubchem_data.dart';
 
@@ -90,5 +91,11 @@ class PubChemService {
     } catch (e) {
       throw Exception('Failed to fetch compound data: $e');
     }
+  }
+
+  // Given a list of Analytes, fetch each one’s PubChemData in parallel.
+  Future<List<PubChemData>> getPubChemData(List<Analyte> analytes) {
+    // map each analyte → Future<PubChemData>, then wait for them all
+    return Future.wait(analytes.map((a) => getCompoundData(a.name)));
   }
 }

@@ -9,6 +9,7 @@ import '../models/crm_detail.dart';
 import '../screens/properties_page.dart';
 import '../screens/spectrum_page.dart';
 import '../services/crm_service.dart';
+import '../services/pubchem_service.dart';
 import '../widgets/analyte_table.dart';
 import '../global_state.dart';
 
@@ -150,10 +151,18 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
         context,
         MaterialPageRoute(
           builder: (context) =>
-              SpectrumPage(selectedAnalyte: _selectedAnalytes[0].name,),
+              SpectrumPage(selectedAnalyte: _selectedAnalytes[0].name),
         ),
       );
     }
+  }
+
+  Future<void> _handleNewlySelectedAnalytes(
+    List<Analyte> newlySelected,
+    BuildContext context,
+  ) async {
+    final data = await PubChemService().getPubChemData(newlySelected);
+    context.read<GlobalState>().addAnalytes(newlySelected, data);
   }
 
   @override
@@ -262,10 +271,7 @@ class _CrmSearchPageState extends State<CrmSearchPage> {
                             .toList();
 
                         if (newlySelected.isNotEmpty) {
-                          Provider.of<GlobalState>(
-                            context,
-                            listen: false,
-                          ).addAnalytes(newlySelected);
+                          _handleNewlySelectedAnalytes(newlySelected, context);
                         }
                       },
                     ),
