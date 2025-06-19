@@ -36,13 +36,13 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
       ),
       body: selectedAnalytes.isEmpty
           ? const Center(child: Text('No analytes selected'))
-          : _buildChartWithData(selectedAnalytes),
+          : _buildChartWithData(globalState),
     );
   }
 
-  Widget _buildChartWithData(List<Analyte> selectedAnalytes) {
+  Widget _buildChartWithData(GlobalState state) {
     return FutureBuilder(
-      future: _fetchAllData(selectedAnalytes),
+      future: _fetchAllData(state),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -54,12 +54,7 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
 
         final dataList = snapshot.data ?? [];
         List<PubChemData> validData = dataList
-            .where(
-              (data) =>
-                  data != null &&
-                  data.molecularWeight != null &&
-                  data.pKow != null,
-            )
+            .where((data) => data.molecularWeight != null && data.pKow != null)
             .cast<PubChemData>()
             .toList();
 
@@ -70,12 +65,8 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
         // Sort data if needed
         if (_sortColumnIndex != null) {
           validData.sort((a, b) {
-            final aValue = _sortColumnIndex == 1
-                ? a.molecularWeight
-                : a.pKow;
-            final bValue = _sortColumnIndex == 1
-                ? b.molecularWeight
-                : b.pKow;
+            final aValue = _sortColumnIndex == 1 ? a.molecularWeight : a.pKow;
+            final bValue = _sortColumnIndex == 1 ? b.molecularWeight : b.pKow;
 
             if (aValue == null || bValue == null) {
               return 0;
@@ -229,10 +220,10 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         onSort: (columnIndex, ascending) {
-                            setState(() {
-                                _sortColumnIndex = columnIndex;
-                                _sortAscending = ascending;
-                            });
+                          setState(() {
+                            _sortColumnIndex = columnIndex;
+                            _sortAscending = ascending;
+                          });
                         },
                       ),
                       DataColumn(
@@ -306,21 +297,27 @@ class _PolarityMwPlotPageState extends State<PolarityMwPlotPage> {
     );
   }
 
-  Future<List<PubChemData?>> _fetchAllData(List<Analyte> analytes) async {
+  Future<List<PubChemData>> _fetchAllData(GlobalState state) async {
     final pubChemService = PubChemService();
 
-    final results = await Future.wait(
-      analytes.map((analyte) async {
-        try {
-          return await pubChemService.getCompoundData(analyte.name);
-        } catch (e) {
-          print('Failed to fetch data for ${analyte.name}: $e');
-          return null; // Return null for failed requests
-        }
-      }),
-      eagerError: false, // Continue processing other requests even if one fails
-    );
+    final results = <PubChemData>[];
+    final failedAnalytes = <Analyte>[];
 
-    return results.where((item) => item != null).toList();
+    for (var analyte in state.selectedAnalytes) {
+      try {
+        final data = await pubChemService.getCompoundData(analyte.name);
+        results.add(data);
+      } catch (e) {
+        debugPrint('Failed to fetch data for ${analyte.name}: $e');
+        failedAnalytes.add(analyte);
+      }
+    }
+
+    if (failedAnalytes.isNotEmpty) {
+      state.removeAnalytes(failedAnalytes);
+    }
+
+    print(state.selectedAnalytes.length);
+    return results;
   }
 }
